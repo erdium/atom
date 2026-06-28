@@ -22,7 +22,7 @@ export interface ResolveProjectTrustedOptions {
 }
 
 function formatProjectTrustPrompt(cwd: string): string {
-	return `Trust project folder?\n${cwd}\n\nThis allows pi to load ${CONFIG_DIR_NAME} settings and resources, install missing project packages, and execute project extensions.`;
+	return `Confirm folder trust\n\n${cwd}\n\nAtom can read files in this folder and, with your permission, edit them or run code and shell commands. It will remember your permissions for the rest of this session.\n\nDo you trust the files in this folder?`;
 }
 
 async function selectProjectTrustOption(

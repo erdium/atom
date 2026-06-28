@@ -92,7 +92,11 @@ import type { SlashCommandInfo } from "./slash-commands.ts";
 import { createSyntheticSourceInfo, type SourceInfo } from "./source-info.ts";
 import { type BuildSystemPromptOptions, buildSystemPrompt } from "./system-prompt.ts";
 import { type BashOperations, createLocalBashOperations } from "./tools/bash.ts";
-import { createAllToolDefinitions } from "./tools/index.ts";
+import {
+	createAllToolDefinitions,
+	createReadUrlToolDefinition,
+	createWebSearchToolDefinition,
+} from "./tools/index.ts";
 import { createToolDefinitionFromAgentTool } from "./tools/tool-definition-wrapper.ts";
 
 // ============================================================================
@@ -413,8 +417,56 @@ export class AgentSession {
 	 * happens here instead of in wrappers.
 	 */
 	private _installAgentToolHooks(): void {
+		const DANGEROUS_COMMAND_PREFIXES = [
+			"rm",
+			"dd",
+			"mkfs",
+			"sudo",
+			"chmod",
+			"chown",
+			"reboot",
+			"shutdown",
+			"halt",
+			"poweroff",
+		];
+
+		function isDangerousCommand(command: string): boolean {
+			const trimmed = command.trim();
+			const firstWord = trimmed.split(/\s+/)[0] ?? "";
+			return DANGEROUS_COMMAND_PREFIXES.some((prefix) => firstWord === prefix);
+		}
+
 		this.agent.beforeToolCall = async ({ toolCall, args }) => {
 			const runner = this._extensionRunner;
+
+			// Bash dangerous command confirmation
+			if (toolCall.name === "bash") {
+				const bashArgs = args as { command?: string } | undefined;
+				const command = bashArgs?.command;
+				if (command && isDangerousCommand(command)) {
+					if (runner.hasHandlers("tool_call")) {
+						try {
+							const result = await runner.emitToolCall({
+								type: "tool_call",
+								toolName: toolCall.name,
+								toolCallId: toolCall.id,
+								input: args as Record<string, unknown>,
+							});
+							if (result?.block) {
+								throw new Error(result.reason ?? "Command blocked by extension.");
+							}
+						} catch (err) {
+							if (err instanceof Error) {
+								throw err;
+							}
+							throw new Error(`Extension failed, blocking execution: ${String(err)}`);
+						}
+					}
+
+					return undefined;
+				}
+			}
+
 			if (!runner.hasHandlers("tool_call")) {
 				return undefined;
 			}
@@ -2424,6 +2476,10 @@ export class AgentSession {
 			Object.entries(baseToolDefinitions).map(([name, tool]) => [name, tool as ToolDefinition]),
 		);
 
+		// Add web search and read URL tools
+		this._baseToolDefinitions.set("web_search", createWebSearchToolDefinition() as ToolDefinition);
+		this._baseToolDefinitions.set("read_url", createReadUrlToolDefinition() as ToolDefinition);
+
 		const extensionsResult = this._resourceLoader.getExtensions();
 		if (options.flagValues) {
 			for (const [name, value] of options.flagValues) {
@@ -2446,7 +2502,7 @@ export class AgentSession {
 
 		const defaultActiveToolNames = this._baseToolsOverride
 			? Object.keys(this._baseToolsOverride)
-			: ["read", "bash", "edit", "write"];
+			: ["read", "bash", "edit", "write", "web_search", "read_url"];
 		const baseActiveToolNames = options.activeToolNames ?? defaultActiveToolNames;
 		this._refreshToolRegistry({
 			activeToolNames: baseActiveToolNames,

@@ -5,7 +5,7 @@ import { Text } from "@earendil-works/pi-tui";
 import { spawn } from "child_process";
 import path from "path";
 import { type Static, Type } from "typebox";
-import { keyHint } from "../../modes/interactive/components/keybinding-hints.ts";
+import { keyHint, keyText } from "../../modes/interactive/components/keybinding-hints.ts";
 import type { Theme } from "../../modes/interactive/theme/theme.ts";
 import { ensureTool } from "../../utils/tools-manager.ts";
 import type { ToolDefinition, ToolRenderResultOptions } from "../extensions/types.ts";
@@ -75,11 +75,16 @@ function formatGrepCall(
 	const glob = str(args?.glob);
 	const limit = args?.limit;
 	const invalidArg = invalidArgText(theme);
-	let text =
-		theme.fg("toolTitle", theme.bold("grep")) +
-		" " +
-		(pattern === null ? invalidArg : theme.fg("accent", `/${pattern || ""}/`)) +
-		theme.fg("toolOutput", ` in ${path === null ? invalidArg : path}`);
+	let text = theme.fg("toolTitle", theme.bold("Search"));
+	if (pattern === null) {
+		text += `(${invalidArg})`;
+	} else {
+		text += `(${theme.fg("toolOutput", pattern ? `/${pattern}/` : "*")}`;
+		if (path) {
+			text += ` ${theme.fg("toolOutput", path)}`;
+		}
+		text += ")";
+	}
 	if (glob) text += theme.fg("toolOutput", ` (${glob})`);
 	if (limit !== undefined) text += theme.fg("toolOutput", ` limit ${limit}`);
 	return text;
@@ -94,30 +99,16 @@ function formatGrepResult(
 	theme: Theme,
 	showImages: boolean,
 ): string {
-	const output = getTextOutput(result, showImages).trim();
-	let text = "";
-	if (output) {
-		const lines = output.split("\n");
-		const maxLines = options.expanded ? lines.length : 15;
-		const displayLines = lines.slice(0, maxLines);
-		const remaining = lines.length - maxLines;
-		text += `\n${displayLines.map((line) => theme.fg("toolOutput", line)).join("\n")}`;
-		if (remaining > 0) {
-			text += `${theme.fg("muted", `\n... (${remaining} more lines,`)} ${keyHint("app.tools.expand", "to expand")}${theme.fg("muted", ")")}`;
-		}
+	if (options.expanded) {
+		return "";
 	}
 
-	const matchLimit = result.details?.matchLimitReached;
-	const truncation = result.details?.truncation;
-	const linesTruncated = result.details?.linesTruncated;
-	if (matchLimit || truncation?.truncated || linesTruncated) {
-		const warnings: string[] = [];
-		if (matchLimit) warnings.push(`${matchLimit} matches limit`);
-		if (truncation?.truncated) warnings.push(`${formatSize(truncation.maxBytes ?? DEFAULT_MAX_BYTES)} limit`);
-		if (linesTruncated) warnings.push("some lines truncated");
-		text += `\n${theme.fg("warning", `[Truncated: ${warnings.join(", ")}]`)}`;
-	}
-	return text;
+	const output = getTextOutput(result, showImages).trim();
+	const matchCount = output ? output.split("\n").length : 0;
+	if (matchCount === 0) return "";
+
+	const collapseHint = theme.fg("muted", ` (${keyText("app.tools.expand")} to collapse)`);
+	return `${theme.fg("toolOutput", `  └  ${matchCount} matches`)}${collapseHint}`;
 }
 
 export function createGrepToolDefinition(
@@ -127,9 +118,10 @@ export function createGrepToolDefinition(
 	const customOps = options?.operations;
 	return {
 		name: "grep",
-		label: "grep",
+		label: "Search",
 		description: `Search file contents for a pattern. Returns matching lines with file paths and line numbers. Respects .gitignore. Output is truncated to ${DEFAULT_LIMIT} matches or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). Long lines are truncated to ${GREP_MAX_LINE_LENGTH} chars.`,
 		promptSnippet: "Search file contents for patterns (respects .gitignore)",
+		promptGuidelines: ["Use grep/Search for searching file contents instead of bash with grep/rg."],
 		parameters: grepSchema,
 		async execute(
 			_toolCallId,
@@ -368,8 +360,16 @@ export function createGrepToolDefinition(
 			});
 		},
 		renderCall(args, theme, context) {
+			const indicator = context.isError
+				? theme.fg("error", "●")
+				: context.isPartial
+					? theme.fg("muted", "○")
+					: theme.fg("success", "●");
 			const text = (context.lastComponent as Text | undefined) ?? new Text("", 0, 0);
-			text.setText(formatGrepCall(args, theme));
+			const expandHint = context.isPartial
+				? theme.fg("muted", ` (${keyText("app.tools.expand")} ${context.expanded ? "to collapse" : "to expand"})`)
+				: "";
+			text.setText(`${indicator} ${formatGrepCall(args, theme)}${expandHint}`);
 			return text;
 		},
 		renderResult(result, options, theme, context) {

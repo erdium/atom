@@ -29,6 +29,7 @@ import { opencodeProvider } from "./opencode.ts";
 import { opencodeGoProvider } from "./opencode-go.ts";
 import { openrouterProvider } from "./openrouter.ts";
 import { openrouterImagesProvider } from "./openrouter-images.ts";
+import { poolsideProvider } from "./poolside.ts";
 import { togetherProvider } from "./together.ts";
 import { vercelAIGatewayProvider } from "./vercel-ai-gateway.ts";
 import { xaiProvider } from "./xai.ts";
@@ -95,6 +96,7 @@ export function builtinProviders(): Provider[] {
 		opencodeProvider(),
 		opencodeGoProvider(),
 		openrouterProvider(),
+		poolsideProvider(),
 		togetherProvider(),
 		vercelAIGatewayProvider(),
 		xaiProvider(),

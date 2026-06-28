@@ -44,8 +44,9 @@ const ThemeJsonSchema = Type.Object({
 		dim: ColorValueSchema,
 		text: ColorValueSchema,
 		thinkingText: ColorValueSchema,
-		// Backgrounds & Content Text (11 colors)
+		// Backgrounds & Selection & Content Text (12 colors)
 		selectedBg: ColorValueSchema,
+		selectionColor: ColorValueSchema,
 		userMessageBg: ColorValueSchema,
 		userMessageText: ColorValueSchema,
 		customMessageBg: ColorValueSchema,
@@ -119,6 +120,7 @@ export type ThemeColor =
 	| "userMessageText"
 	| "customMessageText"
 	| "customMessageLabel"
+	| "selectionColor"
 	| "toolTitle"
 	| "toolOutput"
 	| "mdHeading"
@@ -397,27 +399,12 @@ export class Theme {
 	}
 
 	getThinkingBorderColor(level: "off" | "minimal" | "low" | "medium" | "high" | "xhigh"): (str: string) => string {
-		// Map thinking levels to dedicated theme colors
-		switch (level) {
-			case "off":
-				return (str: string) => this.fg("thinkingOff", str);
-			case "minimal":
-				return (str: string) => this.fg("thinkingMinimal", str);
-			case "low":
-				return (str: string) => this.fg("thinkingLow", str);
-			case "medium":
-				return (str: string) => this.fg("thinkingMedium", str);
-			case "high":
-				return (str: string) => this.fg("thinkingHigh", str);
-			case "xhigh":
-				return (str: string) => this.fg("thinkingXhigh", str);
-			default:
-				return (str: string) => this.fg("thinkingOff", str);
-		}
+		// All thinking levels use the same light gray border
+		return (str: string) => this.fg("muted", str);
 	}
 
 	getBashModeBorderColor(): (str: string) => string {
-		return (str: string) => this.fg("bashMode", str);
+		return (str: string) => this.fg("muted", str);
 	}
 }
 
@@ -1258,8 +1245,8 @@ export function getMarkdownTheme(): MarkdownTheme {
 
 export function getSelectListTheme(): SelectListTheme {
 	return {
-		selectedPrefix: (text: string) => theme.fg("accent", text),
-		selectedText: (text: string) => theme.fg("accent", text),
+		selectedPrefix: (text: string) => theme.fg("selectionColor", text),
+		selectedText: (text: string) => theme.fg("selectionColor", text),
 		description: (text: string) => theme.fg("muted", text),
 		scrollInfo: (text: string) => theme.fg("muted", text),
 		noMatch: (text: string) => theme.fg("muted", text),

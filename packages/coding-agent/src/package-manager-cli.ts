@@ -135,19 +135,19 @@ Examples:
 Update pi and installed packages.
 
 Options:
-  --self                  Update pi only (default when no target is given)
+  --self                  Update atom only (default when no target is given)
   --extensions            Update installed packages only
-  --all                   Update pi and installed packages
+  --all                   Update atom and installed packages
   --extension <source>    Update one package only
   -a, --approve           Trust project-local files for this command
   -na, --no-approve       Ignore project-local files for this command
-  --force                 Reinstall pi even if the current version is latest
+  --force                 Reinstall atom even if the current version is latest
 
 Short forms:
-  ${APP_NAME} update                Update pi only
-  ${APP_NAME} update --all          Update pi and all extensions
+  ${APP_NAME} update                Update atom only
+  ${APP_NAME} update --all          Update atom and all extensions
   ${APP_NAME} update <source>       Update one package
-  ${APP_NAME} update pi             Update pi only (self works as alias to pi)
+  ${APP_NAME} update atom           Update atom only (self works as alias to atom)
 `);
 			return;
 

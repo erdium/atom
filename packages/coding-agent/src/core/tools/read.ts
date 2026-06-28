@@ -71,9 +71,9 @@ function formatReadLineRange(args: ReadRenderArgs | undefined, theme: Theme): st
 	return theme.fg("warning", `:${startLine}${endLine ? `-${endLine}` : ""}`);
 }
 
-function formatReadCall(args: ReadRenderArgs | undefined, theme: Theme, cwd: string): string {
+function formatReadCall(args: ReadRenderArgs | undefined, theme: Theme, cwd: string, label: string): string {
 	const pathDisplay = renderToolPath(str(args?.file_path ?? args?.path), theme, cwd);
-	return `${theme.fg("toolTitle", theme.bold("read"))} ${pathDisplay}${formatReadLineRange(args, theme)}`;
+	return `${theme.fg("toolTitle", theme.bold(`${label}`))}(${pathDisplay}${formatReadLineRange(args, theme)})`;
 }
 
 function trimTrailingEmptyLines(lines: string[]): string[] {
@@ -153,7 +153,7 @@ function formatCompactReadCall(
 	}
 
 	return (
-		theme.fg("toolTitle", theme.bold(`read ${classification.kind}`)) +
+		theme.fg("toolTitle", theme.bold("Read")) +
 		" " +
 		theme.fg("accent", classification.label) +
 		formatReadLineRange(args, theme) +
@@ -169,35 +169,18 @@ function formatReadResult(
 	showImages: boolean,
 	_cwd: string,
 	isError: boolean,
+	label: string,
 ): string {
-	if (!options.expanded && !isError) {
+	if (options.expanded || isError) {
 		return "";
 	}
 
 	const rawPath = str(args?.file_path ?? args?.path);
 	const output = getTextOutput(result, showImages);
-	const lang = rawPath ? getLanguageFromPath(rawPath) : undefined;
-	const renderedLines = lang ? highlightCode(replaceTabs(output), lang) : output.split("\n");
-	const lines = trimTrailingEmptyLines(renderedLines);
-	const maxLines = options.expanded ? lines.length : 10;
-	const displayLines = lines.slice(0, maxLines);
-	const remaining = lines.length - maxLines;
-	let text = `\n${displayLines.map((line) => (lang ? replaceTabs(line) : theme.fg("toolOutput", replaceTabs(line)))).join("\n")}`;
-	if (remaining > 0) {
-		text += `${theme.fg("muted", `\n... (${remaining} more lines,`)} ${keyHint("app.tools.expand", "to expand")}${theme.fg("muted", ")")}`;
-	}
+	const lineCount = output ? output.split("\n").length : 0;
+	if (lineCount === 0) return "";
 
-	const truncation = result.details?.truncation;
-	if (truncation?.truncated) {
-		if (truncation.firstLineExceedsLimit) {
-			text += `\n${theme.fg("warning", `[First line exceeds ${formatSize(truncation.maxBytes ?? DEFAULT_MAX_BYTES)} limit]`)}`;
-		} else if (truncation.truncatedBy === "lines") {
-			text += `\n${theme.fg("warning", `[Truncated: showing ${truncation.outputLines} of ${truncation.totalLines} lines (${truncation.maxLines ?? DEFAULT_MAX_LINES} line limit)]`)}`;
-		} else {
-			text += `\n${theme.fg("warning", `[Truncated: ${truncation.outputLines} lines shown (${formatSize(truncation.maxBytes ?? DEFAULT_MAX_BYTES)} limit)]`)}`;
-		}
-	}
-	return text;
+	return `${theme.fg("toolOutput", `  └  ${label} ${lineCount} lines`)} ${theme.fg("muted", `(${keyText("app.tools.expand")} to collapse)`)}`;
 }
 
 export function createReadToolDefinition(
@@ -208,7 +191,7 @@ export function createReadToolDefinition(
 	const ops = options?.operations ?? defaultReadOperations;
 	return {
 		name: "read",
-		label: "read",
+		label: "Read",
 		description: `Read the contents of a file. Supports text files and images (jpg, png, gif, webp, bmp). Images are sent as attachments. For text files, output is truncated to ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.`,
 		promptSnippet: "Read file contents",
 		promptGuidelines: ["Use read to examine files instead of cat or sed."],
@@ -328,18 +311,26 @@ export function createReadToolDefinition(
 		},
 		renderCall(args, theme, context) {
 			const text = (context.lastComponent as Text | undefined) ?? new Text("", 0, 0);
+			const indicator = context.isError
+				? theme.fg("error", "●")
+				: context.isPartial
+					? theme.fg("muted", "○")
+					: theme.fg("success", "●");
 			const classification = !context.expanded ? getCompactReadClassification(args, context.cwd) : undefined;
-			text.setText(
-				classification
-					? formatCompactReadCall(classification, args, theme)
-					: formatReadCall(args, theme, context.cwd),
-			);
+			const baseText = classification
+				? `${indicator} ${formatCompactReadCall(classification, args, theme)}`
+				: `${indicator} ${formatReadCall(args, theme, context.cwd, "Read")}`;
+			// Only show expand hint before result arrives
+			const expandHint = context.isPartial
+				? theme.fg("muted", ` (${keyText("app.tools.expand")} ${context.expanded ? "to collapse" : "to expand"})`)
+				: "";
+			text.setText(`${baseText}${expandHint}`);
 			return text;
 		},
 		renderResult(result, options, theme, context) {
 			const text = (context.lastComponent as Text | undefined) ?? new Text("", 0, 0);
 			text.setText(
-				formatReadResult(context.args, result, options, theme, context.showImages, context.cwd, context.isError),
+				formatReadResult(context.args, result, options, theme, context.showImages, context.cwd, context.isError, "Read"),
 			);
 			return text;
 		},

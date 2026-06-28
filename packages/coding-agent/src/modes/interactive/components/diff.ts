@@ -121,20 +121,20 @@ export function renderDiff(diffText: string, _options: RenderDiffOptions = {}): 
 					replaceTabs(added.content),
 				);
 
-				result.push(theme.fg("toolDiffRemoved", `-${removed.lineNum} ${removedLine}`));
-				result.push(theme.fg("toolDiffAdded", `+${added.lineNum} ${addedLine}`));
+				result.push(theme.bg("toolErrorBg", theme.fg("toolDiffRemoved", `-${removed.lineNum} ${removedLine}`)));
+				result.push(theme.bg("toolSuccessBg", theme.fg("toolDiffAdded", `+${added.lineNum} ${addedLine}`)));
 			} else {
 				// Show all removed lines first, then all added lines
 				for (const removed of removedLines) {
-					result.push(theme.fg("toolDiffRemoved", `-${removed.lineNum} ${replaceTabs(removed.content)}`));
+					result.push(theme.bg("toolErrorBg", theme.fg("toolDiffRemoved", `-${removed.lineNum} ${replaceTabs(removed.content)}`)));
 				}
 				for (const added of addedLines) {
-					result.push(theme.fg("toolDiffAdded", `+${added.lineNum} ${replaceTabs(added.content)}`));
+					result.push(theme.bg("toolSuccessBg", theme.fg("toolDiffAdded", `+${added.lineNum} ${replaceTabs(added.content)}`)));
 				}
 			}
 		} else if (parsed.prefix === "+") {
 			// Standalone added line
-			result.push(theme.fg("toolDiffAdded", `+${parsed.lineNum} ${replaceTabs(parsed.content)}`));
+			result.push(theme.bg("toolSuccessBg", theme.fg("toolDiffAdded", `+${parsed.lineNum} ${replaceTabs(parsed.content)}`)));
 			i++;
 		} else {
 			// Context line

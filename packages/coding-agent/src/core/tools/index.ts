@@ -51,6 +51,16 @@ export {
 	type ReadToolOptions,
 } from "./read.ts";
 export {
+	createReadUrlTool,
+	createReadUrlToolDefinition,
+	type ReadUrlToolInput,
+} from "./read-url.ts";
+export {
+	createWebSearchTool,
+	createWebSearchToolDefinition,
+	type WebSearchToolInput,
+} from "./web-search.ts";
+export {
 	DEFAULT_MAX_BYTES,
 	DEFAULT_MAX_LINES,
 	formatSize,
@@ -76,6 +86,8 @@ import { createFindTool, createFindToolDefinition, type FindToolOptions } from "
 import { createGrepTool, createGrepToolDefinition, type GrepToolOptions } from "./grep.ts";
 import { createLsTool, createLsToolDefinition, type LsToolOptions } from "./ls.ts";
 import { createReadTool, createReadToolDefinition, type ReadToolOptions } from "./read.ts";
+import { createReadUrlTool, createReadUrlToolDefinition } from "./read-url.ts";
+import { createWebSearchTool, createWebSearchToolDefinition } from "./web-search.ts";
 import { createWriteTool, createWriteToolDefinition, type WriteToolOptions } from "./write.ts";
 
 export type Tool = AgentTool<any>;
@@ -141,6 +153,8 @@ export function createCodingToolDefinitions(cwd: string, options?: ToolsOptions)
 		createBashToolDefinition(cwd, options?.bash),
 		createEditToolDefinition(cwd, options?.edit),
 		createWriteToolDefinition(cwd, options?.write),
+		createWebSearchToolDefinition(),
+		createReadUrlToolDefinition(),
 	];
 }
 

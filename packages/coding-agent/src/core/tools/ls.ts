@@ -3,7 +3,7 @@ import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Text } from "@earendil-works/pi-tui";
 import nodePath from "path";
 import { type Static, Type } from "typebox";
-import { keyHint } from "../../modes/interactive/components/keybinding-hints.ts";
+import { keyHint, keyText } from "../../modes/interactive/components/keybinding-hints.ts";
 import type { Theme } from "../../modes/interactive/theme/theme.ts";
 import type { ToolDefinition, ToolRenderResultOptions } from "../extensions/types.ts";
 import { pathExists, resolveToCwd } from "./path-utils.ts";
@@ -52,7 +52,7 @@ export interface LsToolOptions {
 function formatLsCall(args: { path?: string; limit?: number } | undefined, theme: Theme, cwd: string): string {
 	const limit = args?.limit;
 	const pathDisplay = renderToolPath(str(args?.path), theme, cwd, { emptyFallback: "." });
-	let text = `${theme.fg("toolTitle", theme.bold("ls"))} ${pathDisplay}`;
+	let text = `${theme.fg("toolTitle", theme.bold("ListDir"))}(${pathDisplay})`;
 	if (limit !== undefined) {
 		text += theme.fg("toolOutput", ` (limit ${limit})`);
 	}
@@ -68,28 +68,27 @@ function formatLsResult(
 	theme: Theme,
 	showImages: boolean,
 ): string {
-	const output = getTextOutput(result, showImages).trim();
-	let text = "";
-	if (output) {
-		const lines = output.split("\n");
-		const maxLines = options.expanded ? lines.length : 20;
-		const displayLines = lines.slice(0, maxLines);
-		const remaining = lines.length - maxLines;
-		text += `\n${displayLines.map((line) => theme.fg("toolOutput", line)).join("\n")}`;
-		if (remaining > 0) {
-			text += `${theme.fg("muted", `\n... (${remaining} more lines,`)} ${keyHint("app.tools.expand", "to expand")}${theme.fg("muted", ")")}`;
-		}
+	if (options.expanded) {
+		return "";
 	}
 
-	const entryLimit = result.details?.entryLimitReached;
-	const truncation = result.details?.truncation;
-	if (entryLimit || truncation?.truncated) {
-		const warnings: string[] = [];
-		if (entryLimit) warnings.push(`${entryLimit} entries limit`);
-		if (truncation?.truncated) warnings.push(`${formatSize(truncation.maxBytes ?? DEFAULT_MAX_BYTES)} limit`);
-		text += `\n${theme.fg("warning", `[Truncated: ${warnings.join(", ")}]`)}`;
+	const output = getTextOutput(result, showImages).trim();
+	if (!output) return "";
+
+	const lines = output.split("\n");
+	let dirs = 0;
+	let files = 0;
+	for (const line of lines) {
+		if (line.endsWith("/")) dirs++;
+		else if (line.trim()) files++;
 	}
-	return text;
+
+	const parts: string[] = [];
+	if (dirs > 0) parts.push(`${dirs} ${dirs === 1 ? "directory" : "directories"}`);
+	if (files > 0) parts.push(`${files} ${files === 1 ? "file" : "files"}`);
+
+	const collapseHint = theme.fg("muted", ` (${keyText("app.tools.expand")} to collapse)`);
+	return `${theme.fg("toolOutput", `  └  ${parts.join(" / ")}`)}${collapseHint}`;
 }
 
 export function createLsToolDefinition(
@@ -99,9 +98,10 @@ export function createLsToolDefinition(
 	const ops = options?.operations ?? defaultLsOperations;
 	return {
 		name: "ls",
-		label: "ls",
+		label: "ListDir",
 		description: `List directory contents. Returns entries sorted alphabetically, with '/' suffix for directories. Includes dotfiles. Output is truncated to ${DEFAULT_LIMIT} entries or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first).`,
 		promptSnippet: "List directory contents",
+		promptGuidelines: ["Use ls/ListDir for listing directory contents instead of bash with ls."],
 		parameters: lsSchema,
 		async execute(
 			_toolCallId,
@@ -208,8 +208,16 @@ export function createLsToolDefinition(
 			});
 		},
 		renderCall(args, theme, context) {
+			const indicator = context.isError
+				? theme.fg("error", "●")
+				: context.isPartial
+					? theme.fg("muted", "○")
+					: theme.fg("success", "●");
 			const text = (context.lastComponent as Text | undefined) ?? new Text("", 0, 0);
-			text.setText(formatLsCall(args, theme, context.cwd));
+			const expandHint = context.isPartial
+				? theme.fg("muted", ` (${keyText("app.tools.expand")} ${context.expanded ? "to collapse" : "to expand"})`)
+				: "";
+			text.setText(`${indicator} ${formatLsCall(args, theme, context.cwd)}${expandHint}`);
 			return text;
 		},
 		renderResult(result, options, theme, context) {

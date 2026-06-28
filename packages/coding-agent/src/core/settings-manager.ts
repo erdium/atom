@@ -116,6 +116,8 @@ export interface Settings {
 	showHardwareCursor?: boolean; // Show terminal cursor while still positioning it for IME
 	markdown?: MarkdownSettings;
 	warnings?: WarningSettings;
+	/** Show AI response performance stats (TPS, tokens) after each response. */
+	showResponseStats?: boolean;
 	sessionDir?: string; // Custom session storage directory (same format as --session-dir CLI flag)
 	httpProxy?: string; // Proxy URL applied as HTTP_PROXY and HTTPS_PROXY for Pi-managed HTTP clients
 	httpIdleTimeoutMs?: number; // HTTP header/body idle timeout in milliseconds; 0 disables it
@@ -1089,6 +1091,18 @@ export class SettingsManager {
 		this.globalSettings.terminal.showTerminalProgress = enabled;
 		this.markModified("terminal", "showTerminalProgress");
 		this.save();
+	}
+
+	getShowResponseStats(): boolean {
+		return this.settings.showResponseStats ?? true;
+	}
+
+	setShowResponseStats(enabled: boolean): void {
+		this.globalSettings.showResponseStats = enabled;
+		this.markModified("showResponseStats");
+		this.save();
+		// Update env var so extensions can check it
+		process.env.PI_SHOW_STATS = enabled ? "1" : "0";
 	}
 
 	getImageAutoResize(): boolean {

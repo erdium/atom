@@ -65,8 +65,8 @@ export class ToolExecutionComponent extends Container {
 		// Always create all shell variants. contentBox is used for default renderer-based composition.
 		// selfRenderContainer is used when the tool renders its own framing.
 		// contentText is reserved for generic fallback rendering when no tool definition exists.
-		this.contentBox = new Box(1, 1, (text: string) => theme.bg("toolPendingBg", text));
-		this.contentText = new Text("", 1, 1, (text: string) => theme.bg("toolPendingBg", text));
+		this.contentBox = new Box(1, 1);
+		this.contentText = new Text("", 1, 1);
 		this.selfRenderContainer = new Container();
 
 		if (this.hasRendererDefinition()) {
@@ -133,7 +133,14 @@ export class ToolExecutionComponent extends Container {
 	}
 
 	private createCallFallback(): Component {
-		return new Text(theme.fg("toolTitle", theme.bold(this.toolName)), 0, 0);
+		const indicator = this.getIndicator();
+		return new Text(`${indicator} ${theme.fg("toolTitle", theme.bold(this.toolName))}`, 0, 0);
+	}
+
+	private getIndicator(): string {
+		if (!this.result) return theme.fg("muted", "○");
+		if (this.result.isError) return theme.fg("error", "●");
+		return theme.fg("success", "●");
 	}
 
 	private createResultFallback(): Component | undefined {
@@ -141,7 +148,7 @@ export class ToolExecutionComponent extends Container {
 		if (!output) {
 			return undefined;
 		}
-		return new Text(theme.fg("toolOutput", output), 0, 0);
+		return new Text(theme.fg("toolOutput", `  ⎿ ${output}`), 0, 0);
 	}
 
 	updateArgs(args: any): void {
@@ -251,19 +258,11 @@ export class ToolExecutionComponent extends Container {
 	}
 
 	private updateDisplay(): void {
-		const bgFn = this.isPartial
-			? (text: string) => theme.bg("toolPendingBg", text)
-			: this.result?.isError
-				? (text: string) => theme.bg("toolErrorBg", text)
-				: (text: string) => theme.bg("toolSuccessBg", text);
-
 		let hasContent = false;
 		this.hideComponent = false;
+
 		if (this.hasRendererDefinition()) {
 			const renderContainer = this.getRenderShell() === "self" ? this.selfRenderContainer : this.contentBox;
-			if (renderContainer instanceof Box) {
-				renderContainer.setBgFn(bgFn);
-			}
 			renderContainer.clear();
 
 			const callRenderer = this.getCallRenderer();
@@ -313,7 +312,6 @@ export class ToolExecutionComponent extends Container {
 				}
 			}
 		} else {
-			this.contentText.setCustomBgFn(bgFn);
 			this.contentText.setText(this.formatToolExecution());
 			hasContent = true;
 		}
@@ -363,7 +361,8 @@ export class ToolExecutionComponent extends Container {
 	}
 
 	private formatToolExecution(): string {
-		let text = theme.fg("toolTitle", theme.bold(this.toolName));
+		const indicator = this.getIndicator();
+		let text = `${indicator} ${theme.fg("toolTitle", theme.bold(this.toolName))}`;
 		const content = JSON.stringify(this.args, null, 2);
 		if (content) {
 			text += `\n\n${content}`;

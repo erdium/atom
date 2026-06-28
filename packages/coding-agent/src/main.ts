@@ -601,6 +601,7 @@ export async function main(args: string[], options?: MainOptions) {
 			: undefined;
 	const trustPromptMode: AppMode = parsed.help || parsed.listModels !== undefined ? "print" : appMode;
 	const projectTrustByCwd = new Map<string, boolean>();
+	const trustedFolderPaths: string[] = [];
 
 	const resolvedExtensionPaths = resolveCliPaths(cwd, parsed.extensions);
 	const resolvedSkillPaths = resolveCliPaths(cwd, parsed.skills);
@@ -619,7 +620,8 @@ export async function main(args: string[], options?: MainOptions) {
 		const cachedProjectTrust = projectTrustByCwd.get(cwd);
 		const hasTrustRequiringResources = hasTrustRequiringProjectResources(cwd);
 		const shouldResolveProjectTrust =
-			parsed.projectTrustOverride === undefined && cachedProjectTrust === undefined && hasTrustRequiringResources;
+			parsed.projectTrustOverride === undefined && cachedProjectTrust === undefined &&
+			(hasTrustRequiringResources || isInitialRuntime);
 		const projectTrusted = shouldResolveProjectTrust
 			? false
 			: (cachedProjectTrust ??

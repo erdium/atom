@@ -288,7 +288,7 @@ export class InteractiveMode {
 	private workingMessage: string | undefined = undefined;
 	private workingVisible = true;
 	private workingIndicatorOptions: LoaderIndicatorOptions | undefined = undefined;
-	private readonly defaultWorkingMessage = "Working...";
+	private readonly defaultWorkingMessage = "Running...";
 	private readonly defaultHiddenThinkingLabel = "Thinking...";
 	private hiddenThinkingLabel = this.defaultHiddenThinkingLabel;
 
@@ -297,6 +297,7 @@ export class InteractiveMode {
 	private changelogMarkdown: string | undefined = undefined;
 	private startupNoticesShown = false;
 	private anthropicSubscriptionWarningShown = false;
+
 
 	// Status line tracking (for mutating immediately-sequential status updates)
 	private lastStatusSpacer: Spacer | undefined = undefined;
@@ -664,32 +665,9 @@ export class InteractiveMode {
 
 		// Add header with keybindings from config (unless silenced)
 		if (this.options.verbose || !this.settingsManager.getQuietStartup()) {
-			const logo = theme.bold(theme.fg("accent", APP_NAME)) + theme.fg("dim", ` v${this.version}`);
-
-			// Build startup instructions using keybinding hint helpers
+	// Static header: "atom" logo + compact instructions
+			const versionLine = theme.fg("text", "atom") + theme.fg("muted", ` v${this.version}`);
 			const hint = (keybinding: AppKeybinding, description: string) => keyHint(keybinding, description);
-
-			const expandedInstructions = [
-				hint("app.interrupt", "to interrupt"),
-				hint("app.clear", "to clear"),
-				rawKeyHint(`${keyText("app.clear")} twice`, "to exit"),
-				hint("app.exit", "to exit (empty)"),
-				hint("app.suspend", "to suspend"),
-				keyHint("tui.editor.deleteToLineEnd", "to delete to end"),
-				hint("app.thinking.cycle", "to cycle thinking level"),
-				rawKeyHint(`${keyText("app.model.cycleForward")}/${keyText("app.model.cycleBackward")}`, "to cycle models"),
-				hint("app.model.select", "to select model"),
-				hint("app.tools.expand", "to expand tools"),
-				hint("app.thinking.toggle", "to expand thinking"),
-				hint("app.editor.external", "for external editor"),
-				rawKeyHint("/", "for commands"),
-				rawKeyHint("!", "to run bash"),
-				rawKeyHint("!!", "to run bash (no context)"),
-				hint("app.message.followUp", "to queue follow-up"),
-				hint("app.message.dequeue", "to edit all queued messages"),
-				hint("app.clipboard.pasteImage", "to paste image"),
-				rawKeyHint("drop files", "to attach"),
-			].join("\n");
 			const compactInstructions = [
 				hint("app.interrupt", "interrupt"),
 				rawKeyHint(`${keyText("app.clear")}/${keyText("app.exit")}`, "clear/exit"),
@@ -697,23 +675,9 @@ export class InteractiveMode {
 				rawKeyHint("!", "bash"),
 				hint("app.tools.expand", "more"),
 			].join(theme.fg("muted", " · "));
-			const compactOnboarding = theme.fg(
-				"dim",
-				`Press ${keyText("app.tools.expand")} to show full startup help and loaded resources.`,
-			);
-			const onboarding = theme.fg(
-				"dim",
-				`Pi can explain its own features and look up its docs. Ask it how to use or extend Pi.`,
-			);
-			this.builtInHeader = new ExpandableText(
-				() => `${logo}\n${compactInstructions}\n${compactOnboarding}\n\n${onboarding}`,
-				() => `${logo}\n${expandedInstructions}\n\n${onboarding}`,
-				this.getStartupExpansionState(),
-				1,
-				0,
-			);
+			const headerText = `${versionLine}\n${compactInstructions}`;
 
-			// Setup UI layout
+			this.builtInHeader = new Text(headerText, 1, 0);
 			this.headerContainer.addChild(new Spacer(1));
 			this.headerContainer.addChild(this.builtInHeader);
 			this.headerContainer.addChild(new Spacer(1));
@@ -1751,7 +1715,7 @@ export class InteractiveMode {
 	private createWorkingLoader(): Loader {
 		return new Loader(
 			this.ui,
-			(spinner) => theme.fg("accent", spinner),
+			(spinner) => theme.fg("selectionColor", spinner),
 			(text) => theme.fg("muted", text),
 			this.getWorkingLoaderMessage(),
 			this.workingIndicatorOptions,
@@ -4002,6 +3966,7 @@ export class InteractiveMode {
 					quietStartup: this.settingsManager.getQuietStartup(),
 					clearOnShrink: this.settingsManager.getClearOnShrink(),
 					showTerminalProgress: this.settingsManager.getShowTerminalProgress(),
+					showResponseStats: this.settingsManager.getShowResponseStats(),
 					warnings: this.settingsManager.getWarnings(),
 				},
 				{
@@ -4113,6 +4078,9 @@ export class InteractiveMode {
 					},
 					onShowTerminalProgressChange: (enabled) => {
 						this.settingsManager.setShowTerminalProgress(enabled);
+					},
+					onShowResponseStatsChange: (enabled) => {
+						this.settingsManager.setShowResponseStats(enabled);
 					},
 					onWarningsChange: (warnings) => {
 						this.settingsManager.setWarnings(warnings);

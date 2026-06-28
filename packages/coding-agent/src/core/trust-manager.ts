@@ -65,7 +65,7 @@ export function getProjectTrustParentPath(cwd: string): string | undefined {
 export function getProjectTrustOptions(cwd: string, options?: { includeSessionOnly?: boolean }): ProjectTrustOption[] {
 	const trustPath = normalizeCwd(cwd);
 	const trustOptions: ProjectTrustOption[] = [
-		{ label: "Trust", trusted: true, updates: [{ path: trustPath, decision: true }], savedPath: trustPath },
+		{ label: "Yes", trusted: true, updates: [] },
 	];
 	const parentPath = getProjectTrustParentPath(cwd);
 	if (parentPath !== undefined) {
@@ -80,16 +80,15 @@ export function getProjectTrustOptions(cwd: string, options?: { includeSessionOn
 		});
 	}
 	if (options?.includeSessionOnly) {
-		trustOptions.push({ label: "Trust (this session only)", trusted: true, updates: [] });
+		trustOptions.push({ label: "Yes, and remember this folder for future sessions", trusted: true, updates: [{ path: trustPath, decision: true }], savedPath: trustPath });
 	}
 	trustOptions.push({
-		label: "Do not trust",
+		label: "No (Esc)",
 		trusted: false,
-		updates: [{ path: trustPath, decision: false }],
-		savedPath: trustPath,
+		updates: [],
 	});
 	if (options?.includeSessionOnly) {
-		trustOptions.push({ label: "Do not trust (this session only)", trusted: false, updates: [] });
+		trustOptions.push({ label: "No (this session only)", trusted: false, updates: [] });
 	}
 	return trustOptions;
 }

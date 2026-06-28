@@ -194,7 +194,7 @@ function getRenderablePreviewInput(args: RenderableEditArgs | undefined): { path
 
 function formatEditCall(args: RenderableEditArgs | undefined, theme: Theme, cwd: string): string {
 	const pathDisplay = renderToolPath(str(args?.file_path ?? args?.path), theme, cwd);
-	return `${theme.fg("toolTitle", theme.bold("edit"))} ${pathDisplay}`;
+	return `${theme.fg("toolTitle", theme.bold("Edit"))}(${pathDisplay})`;
 }
 
 function formatEditResult(
@@ -220,7 +220,19 @@ function formatEditResult(
 
 	const resultDiff = result.details?.diff;
 	if (resultDiff && resultDiff !== previewDiff) {
-		return renderDiff(resultDiff, { filePath: rawPath ?? undefined });
+		// Count added/removed lines in the diff
+		let added = 0;
+		let removed = 0;
+		for (const line of resultDiff.split("\n")) {
+			if (line.startsWith("+") && !line.startsWith("+++")) added++;
+			else if (line.startsWith("-") && !line.startsWith("---")) removed++;
+		}
+
+		// Summary line: green +N, red -M
+		const summary = `${theme.fg("success", `+${added}`)}/${theme.fg("toolDiffRemoved", `-${removed}`)}`;
+		const body = renderDiff(resultDiff, { filePath: rawPath ?? undefined });
+
+		return `${summary}\n${body}`;
 	}
 
 	return undefined;
@@ -231,16 +243,7 @@ function getEditHeaderBg(
 	settledError: boolean | undefined,
 	theme: Theme,
 ): (text: string) => string {
-	if (preview) {
-		if ("error" in preview) {
-			return (text: string) => theme.bg("toolErrorBg", text);
-		}
-		return (text: string) => theme.bg("toolSuccessBg", text);
-	}
-	if (settledError) {
-		return (text: string) => theme.bg("toolErrorBg", text);
-	}
-	return (text: string) => theme.bg("toolPendingBg", text);
+	return (text: string) => text;
 }
 
 function buildEditCallComponent(
@@ -248,10 +251,11 @@ function buildEditCallComponent(
 	args: RenderableEditArgs | undefined,
 	theme: Theme,
 	cwd: string,
+	indicator: string,
 ): EditCallRenderComponent {
 	component.setBgFn(getEditHeaderBg(component.preview, component.settledError, theme));
 	component.clear();
-	component.addChild(new Text(formatEditCall(args, theme, cwd), 0, 0));
+	component.addChild(new Text(`${indicator} ${formatEditCall(args, theme, cwd)}`, 0, 0));
 
 	if (!component.preview) {
 		return component;
@@ -291,7 +295,7 @@ export function createEditToolDefinition(
 	const ops = options?.operations ?? defaultEditOperations;
 	return {
 		name: "edit",
-		label: "edit",
+		label: "Edit",
 		description:
 			"Edit a single file using exact text replacement. Every edits[].oldText must match a unique, non-overlapping region of the original file. If two changes affect the same block or nearby lines, merge them into one edit instead of emitting overlapping edits. Do not include large unchanged regions just to connect distant changes.",
 		promptSnippet:
@@ -361,6 +365,11 @@ export function createEditToolDefinition(
 			});
 		},
 		renderCall(args, theme, context) {
+			const indicator = context.isError
+				? theme.fg("error", "●")
+				: context.isPartial
+					? theme.fg("muted", "○")
+					: theme.fg("success", "●");
 			const component = getEditCallRenderComponent(context.state, context.lastComponent);
 			const previewInput = getRenderablePreviewInput(args as RenderableEditArgs | undefined);
 			const argsKey = previewInput
@@ -385,7 +394,7 @@ export function createEditToolDefinition(
 				});
 			}
 
-			return buildEditCallComponent(component, args, theme, context.cwd);
+			return buildEditCallComponent(component, args, theme, context.cwd, indicator);
 		},
 		renderResult(result, _options, theme, context) {
 			const callComponent = context.state.callComponent;
@@ -409,12 +418,16 @@ export function createEditToolDefinition(
 					callComponent.settledError = context.isError;
 					changed = true;
 				}
+				const indicator = context.isError
+					? theme.fg("error", "●")
+					: theme.fg("success", "●");
 				if (changed) {
 					buildEditCallComponent(
 						callComponent,
 						context.args as RenderableEditArgs | undefined,
 						theme,
 						context.cwd,
+						indicator,
 					);
 				}
 			}

@@ -181,12 +181,19 @@ function formatDuration(ms: number): string {
 	return `${(ms / 1000).toFixed(1)}s`;
 }
 
-function formatBashCall(args: { command?: string; timeout?: number } | undefined): string {
+function formatBashCall(args: { command?: string; timeout?: number } | undefined, indicator: string, expanded: boolean): string {
 	const command = str(args?.command);
 	const timeout = args?.timeout as number | undefined;
-	const timeoutSuffix = timeout ? theme.fg("muted", ` (timeout ${timeout}s)`) : "";
-	const commandDisplay = command === null ? invalidArgText(theme) : command ? command : theme.fg("toolOutput", "...");
-	return theme.fg("toolTitle", theme.bold(`$ ${commandDisplay}`)) + timeoutSuffix;
+	let commandPreview = command !== null && command ? command : "...";
+	if (expanded && commandPreview.length > 20) {
+		commandPreview = commandPreview.slice(0, 20) + "...";
+	}
+	let text = `${indicator} ${theme.fg("toolTitle", theme.bold("Bash"))}(${theme.fg("toolOutput", commandPreview)}`;
+	if (timeout !== undefined) {
+		text += `, ${theme.fg("toolOutput", `${timeout}s`)}`;
+	}
+	text += ")";
+	return text;
 }
 
 function rebuildBashResultRenderComponent(
@@ -202,73 +209,6 @@ function rebuildBashResultRenderComponent(
 ): void {
 	const state = component.state;
 	component.clear();
-
-	let output = getTextOutput(result as any, showImages).trim();
-	const truncation = result.details?.truncation;
-	const fullOutputPath = result.details?.fullOutputPath;
-	if (!options.isPartial && truncation?.truncated && fullOutputPath && output.endsWith("]")) {
-		const footerStart = output.lastIndexOf("\n\n[");
-		if (footerStart !== -1 && output.slice(footerStart).includes(fullOutputPath)) {
-			output = output.slice(0, footerStart).trimEnd();
-		}
-	}
-
-	if (output) {
-		const styledOutput = output
-			.split("\n")
-			.map((line) => theme.fg("toolOutput", line))
-			.join("\n");
-
-		if (options.expanded) {
-			component.addChild(new Text(`\n${styledOutput}`, 0, 0));
-		} else {
-			component.addChild({
-				render: (width: number) => {
-					if (state.cachedLines === undefined || state.cachedWidth !== width) {
-						const preview = truncateToVisualLines(styledOutput, BASH_PREVIEW_LINES, width);
-						state.cachedLines = preview.visualLines;
-						state.cachedSkipped = preview.skippedCount;
-						state.cachedWidth = width;
-					}
-					if (state.cachedSkipped && state.cachedSkipped > 0) {
-						const hint =
-							theme.fg("muted", `... (${state.cachedSkipped} earlier lines,`) +
-							` ${keyHint("app.tools.expand", "to expand")}${theme.fg("muted", ")")}`;
-						return ["", truncateToWidth(hint, width, "..."), ...(state.cachedLines ?? [])];
-					}
-					return ["", ...(state.cachedLines ?? [])];
-				},
-				invalidate: () => {
-					state.cachedWidth = undefined;
-					state.cachedLines = undefined;
-					state.cachedSkipped = undefined;
-				},
-			});
-		}
-	}
-
-	if (truncation?.truncated || fullOutputPath) {
-		const warnings: string[] = [];
-		if (fullOutputPath) {
-			warnings.push(`Full output: ${fullOutputPath}`);
-		}
-		if (truncation?.truncated) {
-			if (truncation.truncatedBy === "lines") {
-				warnings.push(`Truncated: showing ${truncation.outputLines} of ${truncation.totalLines} lines`);
-			} else {
-				warnings.push(
-					`Truncated: ${truncation.outputLines} lines shown (${formatSize(truncation.maxBytes ?? DEFAULT_MAX_BYTES)} limit)`,
-				);
-			}
-		}
-		component.addChild(new Text(`\n${theme.fg("warning", `[${warnings.join(". ")}]`)}`, 0, 0));
-	}
-
-	if (startedAt !== undefined) {
-		const label = options.isPartial ? "Elapsed" : "Took";
-		const endTime = endedAt ?? Date.now();
-		component.addChild(new Text(`\n${theme.fg("muted", `${label} ${formatDuration(endTime - startedAt)}`)}`, 0, 0));
-	}
 }
 
 export function createBashToolDefinition(
@@ -280,7 +220,7 @@ export function createBashToolDefinition(
 	const spawnHook = options?.spawnHook;
 	return {
 		name: "bash",
-		label: "bash",
+		label: "Bash",
 		description: `Execute a bash command in the current working directory. Returns stdout and stderr. Output is truncated to last ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.`,
 		promptSnippet: "Execute bash commands (ls, grep, find, etc.)",
 		parameters: bashSchema,
@@ -416,8 +356,13 @@ export function createBashToolDefinition(
 				state.startedAt = Date.now();
 				state.endedAt = undefined;
 			}
+			const indicator = context.isError
+				? theme.fg("error", "●")
+				: context.isPartial
+					? theme.fg("warning", "●")
+					: theme.fg("success", "●");
 			const text = (context.lastComponent as Text | undefined) ?? new Text("", 0, 0);
-			text.setText(formatBashCall(args));
+			text.setText(formatBashCall(args, indicator, context.expanded));
 			return text;
 		},
 		renderResult(result, options, _theme, context) {

@@ -9,14 +9,17 @@ function isAssistantMessage(message: unknown): message is AssistantMessage {
 
 export default function (pi: ExtensionAPI) {
 	let agentStartMs: number | null = null;
+	let enabled = process.env.PI_SHOW_STATS !== "0";
 
 	pi.on("agent_start", () => {
+		if (!enabled) return;
 		agentStartMs = Date.now();
 	});
 
 	pi.on("agent_end", (event, ctx) => {
 		if (!ctx.hasUI) return;
 		if (agentStartMs === null) return;
+		if (!enabled) return;
 
 		const elapsedMs = Date.now() - agentStartMs;
 		agentStartMs = null;

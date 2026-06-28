@@ -208,9 +208,10 @@ export const OPENCODE_GO_MODELS = {
 	"qwen3.7-max": {
 		id: "qwen3.7-max",
 		name: "Qwen3.7 Max",
-		api: "anthropic-messages",
+		api: "openai-completions",
 		provider: "opencode-go",
-		baseUrl: "https://opencode.ai/zen/go",
+		baseUrl: "https://opencode.ai/zen/go/v1",
+		compat: {"supportsStore":false,"supportsDeveloperRole":false,"maxTokensField":"max_tokens"},
 		reasoning: true,
 		input: ["text"],
 		cost: {
@@ -221,13 +222,14 @@ export const OPENCODE_GO_MODELS = {
 		},
 		contextWindow: 1000000,
 		maxTokens: 65536,
-	} satisfies Model<"anthropic-messages">,
+	} satisfies Model<"openai-completions">,
 	"qwen3.7-plus": {
 		id: "qwen3.7-plus",
 		name: "Qwen3.7 Plus",
-		api: "anthropic-messages",
+		api: "openai-completions",
 		provider: "opencode-go",
-		baseUrl: "https://opencode.ai/zen/go",
+		baseUrl: "https://opencode.ai/zen/go/v1",
+		compat: {"supportsStore":false,"supportsDeveloperRole":false,"maxTokensField":"max_tokens"},
 		reasoning: true,
 		input: ["text", "image"],
 		cost: {
@@ -238,5 +240,5 @@ export const OPENCODE_GO_MODELS = {
 		},
 		contextWindow: 1000000,
 		maxTokens: 65536,
-	} satisfies Model<"anthropic-messages">,
+	} satisfies Model<"openai-completions">,
 } as const;

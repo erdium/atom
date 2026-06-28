@@ -2,7 +2,6 @@ node_modules/
 *.log
 .DS_Store
 *.tsbuildinfo
-packages/*/dist/
 packages/*/dist-chrome/
 packages/*/dist-firefox/
 packages/*/src/

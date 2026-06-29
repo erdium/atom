@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.80.3] - 2026-06-29
+
 ### Fixed
 
 - Fixed `--session` and `SessionManager.open()` to reject non-empty invalid session files without overwriting them ([#6002](https://github.com/earendil-works/pi/issues/6002)).

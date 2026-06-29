@@ -8,7 +8,7 @@ const packages = [
 	{ directory: "packages/ai", name: "@earendil-works/pi-ai" },
 	{ directory: "packages/agent", name: "@earendil-works/pi-agent-core" },
 	{ directory: "packages/tui", name: "@earendil-works/pi-tui" },
-	{ directory: "packages/coding-agent", name: "atom-cli" },
+	{ directory: "packages/coding-agent", name: "@erdium/atom" },
 ];
 
 const dryRun = process.argv.includes("--dry-run");

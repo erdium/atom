@@ -33,8 +33,8 @@ for (const [name, version] of Object.entries(versionMap).sort()) {
 	console.log(`  ${name}: ${version}`);
 }
 
-// atom-cli is not lockstep versioned with other packages
-const excluded = new Set(['atom-cli']);
+// @erdium/atom is not lockstep versioned with other packages
+const excluded = new Set(['@erdium/atom']);
 const coreVersions = Object.entries(versionMap)
 	.filter(([name]) => !excluded.has(name))
 	.map(([, v]) => v);

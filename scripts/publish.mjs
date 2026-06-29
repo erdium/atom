@@ -8,7 +8,7 @@ const packages = [
 	{ directory: "packages/ai", name: "@earendil-works/pi-ai" },
 	{ directory: "packages/agent", name: "@earendil-works/pi-agent-core" },
 	{ directory: "packages/tui", name: "@earendil-works/pi-tui" },
-	{ directory: "packages/coding-agent", name: "@earendil-works/pi-coding-agent" },
+	{ directory: "packages/coding-agent", name: "atom-cli" },
 ];
 
 const dryRun = process.argv.includes("--dry-run");
@@ -83,8 +83,10 @@ for (const pkg of packages) {
 }
 
 const versions = [...new Set(packageVersions.values())];
-if (versions.length !== 1) {
-	throw new Error(`Publish packages are not lockstep versioned: ${versions.join(", ")}`);
+// atom-cli is not lockstep versioned with other packages
+const coreVersions = versions.filter(v => v !== "0.1.0");
+if (coreVersions.length !== 1) {
+	throw new Error(`Publish packages are not lockstep versioned: ${coreVersions.join(", ")}`);
 }
 
 console.log(`Publishing pi packages at ${versions[0]}${dryRun ? " (dry run)" : ""}\n`);
@@ -120,6 +122,6 @@ for (const pkg of packageStates) {
 		continue;
 	}
 
-	run("npm", ["publish", "--access", "public", "--provenance", "--ignore-scripts"], { cwd: pkg.directory });
+	run("npm", ["publish", "--access", "public", "--ignore-scripts"], { cwd: pkg.directory });
 	console.log();
 }

@@ -33,8 +33,14 @@ for (const [name, version] of Object.entries(versionMap).sort()) {
 	console.log(`  ${name}: ${version}`);
 }
 
-// Verify all versions are the same (lockstep)
-const versions = new Set(Object.values(versionMap));
+// atom-cli is not lockstep versioned with other packages
+const excluded = new Set(['atom-cli']);
+const coreVersions = Object.entries(versionMap)
+	.filter(([name]) => !excluded.has(name))
+	.map(([, v]) => v);
+
+// Verify all core versions are the same (lockstep)
+const versions = new Set(coreVersions);
 if (versions.size > 1) {
 	console.error('\n❌ ERROR: Not all packages have the same version!');
 	console.error('Expected lockstep versioning. Run one of:');
